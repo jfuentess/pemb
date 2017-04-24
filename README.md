@@ -13,7 +13,7 @@ For datasets, please visit http://www.dcc.uchile.cl/~jfuentess/pemb
 ### Authors
 
 * Leo Ferres
-* Jos\'e Fuentes-Sep\'elveda
+* José Fuentes-Sepúlveda
 * Travis Gagie
 * Meng He
 * Gonzalo Navarro
