@@ -1,7 +1,8 @@
 /******************************************************************************
  * pointer_based.h
  *
- * Parallel construction of succinct plane graphs
+ * Implementation of degree and listing operation for the adjacency list
+ * representation
  *
  ******************************************************************************
  * Copyright (C) 2016 Leo Ferres, José Fuentes <jfuentess@dcc.uchile.cl>, Travis
@@ -28,3 +29,4 @@
 
 uint degree_pb(Graph *, uint);
 void list_neighbors_pb(Graph *, uint);
+void face_pb(Graph *, uint);

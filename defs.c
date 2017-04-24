@@ -336,6 +336,7 @@ void parallel_list_ranking(ENode* A, uint size) {
     s = size;
     chk = 1;     
   }
+  /* printf("size: %u, s: %u, chk: %u\n", size, s, chk); */
 
   struct sublist_node* sublist = malloc(s*sizeof(struct sublist_node));
   
@@ -348,6 +349,8 @@ void parallel_list_ranking(ENode* A, uint size) {
     sublist[i].next = -1;
     sublist[i].scratch = A[x].succ;
     A[x].succ = -(i)-1;
+    /* printf("\t%u: %u\n", x, -(A[x].succ)); */
+    /* printf("\t[*]%u: %u\n", x, sublist[i].scratch); */
   }
   
   cilk_for(uint i = 0; i < s; i++) {
@@ -400,11 +403,18 @@ void parallel_list_ranking(ENode* A, uint size) {
     if(i == 0)
       ll++;
 
+    /* fprintf(stderr, "ll: %u, ul: %u\n", ll, ul); */
     for(uint j = ll; j < ul; j++) {
        int idx = -(A[j].succ)-1;
        A[j].rankA += sublist[idx].valueA;
        A[j].rankB += sublist[idx].valueB;
+
+       /* if(A[j].rankA < 0) */
+       /* 	 printf("j:%u, idx: %d, valueA:%d, valueB:%d\n", j, idx, sublist[idx].valueA, */
+       /* 		sublist[idx].valueB); */
     }
+    // Assuming that the field "succ" will not be longer used
+    //    A[i].succ = sublist[i].scratch;
   }
   
   A[0].rankA=0;

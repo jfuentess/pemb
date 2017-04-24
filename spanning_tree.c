@@ -1,5 +1,6 @@
+
 /******************************************************************************
- * spanning_tree.h
+ * spanning_tree.c
  *
  * Parallel construction of succinct plane graphs
  *
@@ -129,10 +130,74 @@ Tree *seq_dfs_spanning_tree(Graph *g, uint init, int *parent, uint *count_edges,
   free(visited);
   free(edges);
   stack_free(s);
-    
+  
   return t;
 }
 
+
+Tree *seq_bfs_spanning_tree(Graph *g, uint init) {
+  Tree *t = create_tree(g->n);
+  BIT_ARRAY *visited = bit_array_create(g->n);
+  BIT_ARRAY *edges = bit_array_create(2*g->m);
+
+  Queue *q = queue_create(g->n);
+  bit_array_set_bit(visited, init);
+  queue_enqueue(q, init);
+
+  while(!queue_empty(q)) {
+    uint curr = (uint)queue_dequeue(q);
+
+    for(uint i = g->V[curr].first; i <= g->V[curr].last; i++) {
+      uint target = g->E[i].tgt;
+      
+      if(!bit_array_get_bit(visited, target)) { // Not visited
+	bit_array_set_bit(visited, target);
+	queue_enqueue(q, target);
+
+	bit_array_set_bit(edges, i);
+	bit_array_set_bit(edges, g->E[i].cmp);
+      }
+    }
+  }
+
+  uint m = 0;
+  for(uint i = 0; i < 2*g->m; i++) {
+    if(bit_array_get_bit(edges, i)) {
+      t->E[m].src = g->E[i].src;
+      t->E[m].tgt = g->E[i].tgt;
+
+      if(m == 0)
+	t->N[t->E[m].src].first = m;
+      else if(t->E[m].src != t->E[m-1].src) {
+	t->N[t->E[m-1].src].last = m-1;
+	t->N[t->E[m].src].first = m;
+      }
+      m++;
+    }
+  }
+  t->N[t->E[m-1].src].last = m-1;
+
+
+  for(uint i = 0; i < 2*(t->n-1); i++) {
+    Node target = t->N[t->E[i].tgt];
+    
+    for(uint j = target.first; j <= target.last; j++)
+      if(t->E[j].tgt == t->E[i].src) {
+  	t->E[i].cmp = j;
+  	break;
+      }
+  }
+
+  return t;
+}
+
+
+/*
+ * This implementation is based on the algorithm introduced in:
+ *    David A. Bader and Guojing Cong. A fast, parallel spanning tree algorithm
+ *    for symmetric multiprocessors (SMPs). Journal of Parallel and Distributed
+ *    Computing, 65(9):994 – 1006, 2005.
+ */
 Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
 			uint * references) {
 
@@ -158,7 +223,7 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
   cilk_for(uint i = 0; i < threads; i++) {
     _local_spanning_tree2(g, visited, parent, s_threads[i], s_size);
   }
-       
+
   uint chk = ceil((double)g->n/threads);
   cilk_for(uint i = 0; i < threads; i++) {
     uint ll = i*chk;
@@ -166,7 +231,6 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
     if(ul > g->n)
       ul = g->n;
 
-    /* Make it faster: Thread-safe only at the beginning and the end*/
     for(uint j = ll; j < ul; j++) {
       if(init != j) {
   	edges[(uint)parent[j]] = 1;
@@ -174,7 +238,7 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
       }
     }
   }
-    
+
   // Prefix Sum
   uint *offsets = calloc(threads, sizeof(uint));
   chk = ceil((double)2*g->m/threads);
@@ -230,8 +294,6 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
     int last_one = -1;
     uint carry_last = 0;
 
-    // NOTE: Assuming that, for each vertex v of G, degree(v) < O(n/p)
-    // TODO: Implement the case degree(v) > O(n/p)
     for(uint j = first; j <= last; j++) {
       if(edges[j]) {
   	if(last_one == -1)
@@ -249,7 +311,7 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
 
     count_edges[last_one] += zeros + carry_last;
   }
-    
+
   uint cmp_first_edge = 0;
   cilk_for(uint i = 0; i < threads; i++) {
     uint ll = i*chk, ul = ll + chk;
@@ -270,7 +332,7 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
   // Especial case for the complement of the first edge
   t->E[0].cmp = edges[cmp_first_edge];
   references[0] = first_edge;
-    
+
   chk = ceil((double)g->n/threads);
   cilk_for(uint i = 0; i < threads; i++) {
     uint ll = i*chk, ul = ll + chk;
@@ -282,8 +344,6 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
       uint new_last = 0;
       uint idx = 0;
       
-      // NOTE: Assuming that, for each vertex v of G, degree(v) < O(n/p)
-      // TODO: Implement the case degree(v) > O(n/p)
       idx = g->V[j].first;
       while(!edges[idx])
   	idx++;
@@ -296,7 +356,7 @@ Tree* par_spanning_tree2(Graph* g, uint init, int *parent, uint *count_edges,
     }
   }
 
-  t->N[0].first = 0;  
+  t->N[0].first = 0;
 
   chk = ceil((double)g->n/threads);
   cilk_for(uint i = 0; i < threads; i++) {

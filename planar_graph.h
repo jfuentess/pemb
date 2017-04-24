@@ -25,6 +25,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *****************************************************************************/
+
 #include "spanning_tree.h"
 #include "succinct_tree.h"
 
@@ -37,8 +38,10 @@ uint vertex(SuccGraph *, uint);
 
 uint degree(SuccGraph *, uint);
 void list_neighbors(SuccGraph *, uint);
+void face(SuccGraph *, uint);
+int balanced(BIT_ARRAY*);
 
 // Size of a succinct planar graph in bytes
 ulong size_planar_graph(SuccGraph*);
 
-int balanced(BIT_ARRAY*);
+

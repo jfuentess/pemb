@@ -1,11 +1,11 @@
 /******************************************************************************
  * succinct_tree.h
  *
- * Parallel construction of succinct trees
- * For more information: http://www.inf.udec.cl/~josefuentes/sea2015/
+ * Parallel construction of succinct plane graphs
  *
  ******************************************************************************
- * Copyright (C) 2015 José Fuentes Sepúlveda <jfuentess@udec.cl>
+ * Copyright (C) 2016 Leo Ferres, José Fuentes <jfuentess@dcc.uchile.cl>, Travis
+ * Gagie, Meng He and Gonzalo Navarro
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -120,5 +120,9 @@ int32_t match_naive(rmMt *, int32_t);
 int32_t match_semi(rmMt *, int32_t);
 
 int32_t parent_t(rmMt* st, int32_t i);
+int32_t depth(rmMt* st, int32_t i);
+int32_t first_child(rmMt* st, int32_t i);
+int32_t next_sibling(rmMt* st, int32_t i);
+int32_t is_leaf_t(rmMt* st, int32_t i);
 
 #endif // SUCCINCT_TREE_H

@@ -38,3 +38,23 @@ void list_neighbors_pb(Graph *g, uint v) {
     uint x = g->E[i].tgt;
   }
 }
+
+void face_pb(Graph *g, uint e) {
+  if(e >= 2*g->m)
+    return;
+
+  uint nxt = e;
+  uint cmp;
+  uint init_vertex = g->E[e].src;
+  uint curr_vertex = -1;
+
+  while(curr_vertex != init_vertex) {
+    cmp = g->E[nxt].cmp;
+    curr_vertex = g->E[cmp].src;
+    nxt = cmp+1;
+    
+    if(nxt > g->V[curr_vertex].last)
+      nxt = g->V[curr_vertex].first;
+
+  }
+}

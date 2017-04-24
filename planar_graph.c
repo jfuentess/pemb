@@ -25,6 +25,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *****************************************************************************/
+
 #include <stdlib.h>
 #include "planar_graph.h"
 
@@ -104,7 +105,7 @@ SuccGraph* par_succ_planar_graph(Graph *g, Tree *t, uint init, int *parent, uint
   }
 
   parallel_list_ranking(ET, 2*(t->n-1));
-  
+
   cilk_for(uint h = 0; h < threads; h++) {
     uint ll = h*chk;
     uint ul = ll+chk;
@@ -219,7 +220,6 @@ void _mark_edges(Graph *g, uint ref, uint cnt, uint pos, uint *marked_edges) {
     }
   }
 }
-
 
 // init: root of the spanning tree
 SuccGraph* seq_succ_planar_graph(Graph *g, Tree *t, uint init, int *parent, uint
@@ -341,6 +341,8 @@ SuccGraph* seq_succ_planar_graph(Graph *g, Tree *t, uint init, int *parent, uint
 }
 
 
+
+
 /* Assuming indices start with 0 */
 uint first(SuccGraph *sg, uint v) {
   if(v >= 0) {
@@ -412,26 +414,26 @@ uint degree(SuccGraph *sg, uint v) {
   return dg;
 }
 
-uint vertex(SuccGraph *sg, uint v) {
-  uint pos_in_A = rank(sg->A, v); // rank1
-  if(isBitSet(sg->A, v)==1) {
-    if(bit_array_get_bit(sg->B->bit_array, pos_in_A+1) == 0) {
-      uint match_pos = match(sg->B, pos_in_A+1);
-      return (rank(sg->B_rs, match_pos) - 1);
+uint vertex(SuccGraph *sg, uint e) {
+  uint pos_in_A = rank(sg->A, e); // rank1
+  if(isBitSet(sg->A, e)==1) {
+    if(bit_array_get_bit(sg->B->bit_array, pos_in_A) == 0) {
+      uint match_pos = match(sg->B, pos_in_A);
+      return rank(sg->B_rs, match_pos) - 1;
     }
     else {
-      uint rank1_B = rank(sg->B_rs, pos_in_A+1);
-      return parent_t(sg->B, rank1_B-1);
+      uint par = parent_t(sg->B, pos_in_A);
+      return rank(sg->B_rs, par)-1;
     }
   }
   else {
-    if(bit_array_get_bit(sg->B->bit_array, pos_in_A+1) == 0) {
+    if(bit_array_get_bit(sg->B->bit_array, pos_in_A) == 1) {
       return rank(sg->B_rs, pos_in_A)-1;
     }
     else {
-      uint match_pos = match(sg->B, pos_in_A+1);
-      uint rank1_B = rank(sg->B_rs, match_pos);
-      return parent_t(sg->B, rank1_B-1);
+      uint match_pos = match(sg->B, pos_in_A);
+      uint par = parent_t(sg->B, match_pos);
+      return rank(sg->B_rs, par)-1;
     }
   }
 }
@@ -444,9 +446,30 @@ void list_neighbors(SuccGraph *sg, uint v) {
   while(nxt < 2*sg->m) {
     if(nxt < 2*sg->m) {
       uint mt = mate(sg, nxt);
-      uint x = vertex(sg, mt);
+      uint x = vertex(sg, mt); // Print neighbor
     }
     nxt = next(sg, nxt);	
+  }
+}
+
+void face(SuccGraph *sg, uint e) {
+  if(e >= 2*sg->m)
+    return;
+
+  char flag = 1;
+  uint nxt = e;
+  uint mt;
+  uint init_vertex = vertex(sg, nxt);
+  uint curr_vertex = -1;
+  while(curr_vertex != init_vertex || flag) {
+    if(nxt >= 2*sg->m) {
+      nxt = first(sg, vertex(sg, mt));
+    }
+
+    flag = 0;
+    mt = mate(sg, nxt);
+    curr_vertex = vertex(sg, mt);
+    nxt = next(sg, mt);
   }
 }
 

@@ -1,11 +1,11 @@
 /******************************************************************************
  * succinct_tree.c
  *
- * Parallel construction of succinct trees
- * For more information: http://www.inf.udec.cl/~josefuentes/sea2015/
+ * Parallel construction of succinct plane graphs
  *
  ******************************************************************************
- * Copyright (C) 2015 José Fuentes Sepúlveda <jfuentess@udec.cl>
+ * Copyright (C) 2016 Leo Ferres, José Fuentes <jfuentess@dcc.uchile.cl>, Travis
+ * Gagie, Meng He and Gonzalo Navarro
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -682,12 +682,9 @@ int32_t naive_bwd_search(rmMt* st, int32_t i, int32_t d) {
   int32_t target = excess + d;
   int32_t j = 0;
 
-  printf("init chunk: %d, ", i/st->s);
-
   for(j=i; j >= begin; j--) {
     excess += 2*bit_array_get_bit(st->bit_array,j)-1;
     if(excess == target) {
-      printf("end chunk: %d. ", j/st->s);
       return j;
     }
   }
@@ -708,7 +705,6 @@ int32_t semi_bwd_search(rmMt* st, int32_t i, int32_t d) {
   int begin = i;
   int end = chunk*st->s;
 
-  printf("init chunk: %d, ", chunk);
   for(j=begin; j >= end; j--) {
     excess += 1 - 2*bit_array_get_bit(st->bit_array,j);
     if(excess == target)
@@ -726,8 +722,6 @@ int32_t semi_bwd_search(rmMt* st, int32_t i, int32_t d) {
       break;
     }
   }
-
-  printf("end chunk: %d. ", chunk);
 
   begin = (chunk+1)*st->s-1;
   end = chunk*st->s;
@@ -747,23 +741,23 @@ int32_t semi_bwd_search(rmMt* st, int32_t i, int32_t d) {
 }
 
 // Check a leaf from right to left
-int32_t check_leaf_l(rmMt* st, int32_t i, int32_t d) {
+int32_t check_leaf_l(rmMt* st, int32_t i, int32_t target, int32_t excess) {
   int rlimit = (i/8)*8;
   int begin = (i/st->s)*st->s;
   int llimit = ((begin+8)/8)*8;
   if(llimit > rlimit)
     llimit = rlimit;
-  int32_t excess = d;
   int32_t output;
   int32_t j = 0;
 
   for(j=i; j >= max(rlimit, llimit); j--){
     excess += 2*bit_array_get_bit(st->bit_array,j)-1;
-    if(excess == d)
+    if(excess == target) {
       return j;
+    }
   }
   for(j = rlimit-8; j >= llimit; j-=8) {
-    int32_t desired = excess - d; // desired value must belongs to the range [-8,8]
+    int32_t desired = excess - target; // desired value must belongs to the range [-8,8]
     
 #ifdef ARCH64
     int32_t sum_idx = (((st->bit_array)->words[j>>logW]) & (0xFFL<<(j&(word_size-1)))) >> (j&(word_size-1));
@@ -782,7 +776,7 @@ int32_t check_leaf_l(rmMt* st, int32_t i, int32_t d) {
 
   for (j=min(llimit,rlimit)-1; j >= begin; j--) {
     excess += 2*bit_array_get_bit(st->bit_array,j)-1;
-    if (excess == d) {
+    if (excess == target) {
       return j;
     }
   }
@@ -791,16 +785,16 @@ int32_t check_leaf_l(rmMt* st, int32_t i, int32_t d) {
 }
 
 // Check a left sibling
-int32_t check_sibling_l(rmMt* st, int32_t i, int32_t d) {
+int32_t check_sibling_l(rmMt* st, int32_t i, int32_t excess, int32_t d) {
   int llimit = i;
   int rlimit = i+st->s;
 
-  int32_t excess = st->e_prime[i/st->s];
+  int32_t e = st->e_prime[i/st->s];
   int32_t output;
   int32_t j = 0;
 
   for(j = rlimit-8; j >= llimit; j-=8) {
-    int32_t desired =  d - excess; // desired value must belongs to the range [-8,8]
+    int32_t desired =  excess - d - e; // desired value must belongs to the range [-8,8]
     
 #ifdef ARCH64
     int32_t sum_idx = (((st->bit_array)->words[j>>logW]) & (0xFFL<<(j&(word_size-1)))) >> (j&(word_size-1));
@@ -814,7 +808,7 @@ int32_t check_sibling_l(rmMt* st, int32_t i, int32_t d) {
       if(x < 8)
 	return j+x;
     }
-    excess -= T->word_sum[sum_idx];
+    e -= T->word_sum[sum_idx];
   }
   
   return i-1;
@@ -829,7 +823,7 @@ int32_t bwd_search(rmMt* st, int32_t i, int32_t d) {
   long j;
 
   // Case 1: Check if the chunk of i contains bwd_search(bit_array, i, target)
-  output = check_leaf_l(st, i, target);
+  output = check_leaf_l(st, i, target, excess);
   if(output < i)
     return output;
   
@@ -837,10 +831,10 @@ int32_t bwd_search(rmMt* st, int32_t i, int32_t d) {
   // (assuming a binary tree, if i%2==1, then its left sibling is at position i-1)
   if(chunk%2 == 1) { // The current chunk has a left sibling
     // The answer is in the left sibling of the current node
-    if(st->m_prime[st->internal_nodes + chunk - 1] <= target+1 && target+1 <=
+    if(st->m_prime[st->internal_nodes + chunk - 1] <= excess-d+1 && excess-d+1 <=
        st->M_prime[st->internal_nodes + chunk - 1]) {
       
-      output = check_sibling_l(st, st->s*(chunk-1), target);
+      output = check_sibling_l(st, st->s*(chunk-1), excess, d);
       if(output >= st->s*(chunk-1))
   	return output;
     }
@@ -853,7 +847,8 @@ int32_t bwd_search(rmMt* st, int32_t i, int32_t d) {
     if (is_right_child(node)) { // if the node is a left child
       node = left_sibling(node); // choose right sibling
       
-      if (st->m_prime[node] <= target && target <= st->M_prime[node])
+      //      if (st->m_prime[node] <= target && target <= st->M_prime[node])
+      if (st->m_prime[node] <= excess-d && excess-d <= st->M_prime[node])
 	break;      
     }
     node = parent(node); // choose parent
@@ -864,10 +859,10 @@ int32_t bwd_search(rmMt* st, int32_t i, int32_t d) {
     while (!is_leaf(node, st->internal_nodes)) {
       node = right_child(node); // choose right child
 
-      if (!(st->m_prime[node] <= target && target <= st->M_prime[node])) {
+      if (!(st->m_prime[node] <= excess-d && excess-d <= st->M_prime[node])) {
 	node = left_sibling(node); // choose left child == left sibling of the	right child
 	
-	if(st->m_prime[node] > target || target > st->M_prime[node]) {
+	if(st->m_prime[node] > excess-d || excess-d > st->M_prime[node]) {
 	  return i;
 	}
       }
@@ -877,13 +872,14 @@ int32_t bwd_search(rmMt* st, int32_t i, int32_t d) {
 
     // Special case: if the result is at the beginning of chunk i, then,
     // the previous condition will select the chunk i-1
-    if(st->e_prime[chunk] == target) { // If the last value (e') of chunk is equal
+    //    if(st->e_prime[chunk] == target) { // If the last value (e') of chunk is equal
+    if(st->e_prime[chunk] == excess-d) { // If the last value (e') of chunk is equal
     // to the target, then the answer is in the first position of the next chunk
 
       return (chunk+1)*st->s;
     }
-          
-    return check_sibling_l(st, st->s*chunk, target);
+    
+    return check_sibling_l(st, st->s*chunk, excess, d);
   }
   else {// Special case: Pair of parentheses wrapping the parentheses sequence
         //(at positions 0 and n-1)
@@ -1022,7 +1018,53 @@ int32_t match_semi(rmMt* st, int32_t i) {
 int32_t parent_t(rmMt* st, int32_t i) {
   if(!bit_array_get_bit(st->bit_array,i))
     i = find_open(st, i);
+  
   return bwd_search(st, i, 2);
+}
+
+int32_t depth(rmMt* st, int32_t i) {
+  return 2*rank_1(st, i)-i-1;
+}
+
+int32_t first_child(rmMt* st, int32_t i) {
+  if(i >= st->n-1)
+    return -1;
+
+  if(!bit_array_get_bit(st->bit_array,i))
+    return -1;
+  
+  if(bit_array_get_bit(st->bit_array,i+1))
+    return i+1;
+  else 
+    return -1;
+}
+
+int32_t next_sibling(rmMt* st, int32_t i) {
+  if(i >= st->n-1)
+    return -1;
+  
+  if(!bit_array_get_bit(st->bit_array,i))
+    return -1;
+
+  i = find_close(st, i);  
+  
+  if(bit_array_get_bit(st->bit_array,i+1))
+    return i+1;
+  else 
+    return -1;
+}
+
+int32_t is_leaf_t(rmMt* st, int32_t i) {
+  if(i >= st->n-1)
+    return 0;
+
+  if(!bit_array_get_bit(st->bit_array,i))
+    return 0;
+
+  if(!bit_array_get_bit(st->bit_array,i+1))
+    return 1;
+  
+  return 0;
 }
 
 ulong size_rmMt(rmMt *st) {

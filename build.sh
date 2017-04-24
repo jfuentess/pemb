@@ -20,3 +20,8 @@ echo "Compiling malloc_count version"
 gcc -std=gnu99 -DMALLOC_COUNT -DNOPARALLEL -o sg_mem main.c defs.c planar_graph.c\
     spanning_tree.c util.c succinct_tree.c lookup_tables.c malloc_count.c\
     bit_array.o bitrank/basic.o bitrank/bitrankw32int.o -lrt -lm -ldl
+
+echo "Compiling pointer_based queries version"
+gcc -std=gnu99 -DPOINTER_BASED -o sg_pb main.c pointer_based.c defs.c planar_graph.c\
+   spanning_tree.c util.c succinct_tree.c lookup_tables.c\
+   bit_array.o bitrank/basic.o bitrank/bitrankw32int.o -fcilkplus -lcilkrts -lrt -lm

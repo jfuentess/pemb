@@ -25,6 +25,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *****************************************************************************/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
   uint *count_edges = calloc(2*(g->n-1), sizeof(uint));
   uint *references = calloc(2*(g->n-1), sizeof(uint));
   uint init = 0;
-
+  
 #ifdef MALLOC_COUNT
   malloc_reset_peak();
 #else
