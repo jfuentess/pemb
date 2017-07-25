@@ -1,7 +1,6 @@
 ## Synopsis
 
-This repository contains the implementation of the algorithms introduced in
-<https://arxiv.org/abs/1610.00130>
+This repository contains the implementation of the algorithms introduced in "L. Ferres, J. Fuentes-Sepúlveda, T. Gagie, M. He, G. Navarro, Fast and compact planar embeddings. WADS 2017."
 
 To compile:
 ```
